@@ -5,7 +5,7 @@ import tempfile
 import boto3
 from datetime import datetime
 from dotenv import load_dotenv
-load_dotenv()  # loads the .env file into os.environ automatically
+load_dotenv(override=True)  # loads the .env file into os.environ automatically
 
 # ── Config ─────────────────────────────────────────────────────────────────
 BUCKET_NAME    = "project-ncp"
