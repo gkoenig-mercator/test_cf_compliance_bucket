@@ -6,6 +6,7 @@ import boto3
 from datetime import datetime
 from dotenv import load_dotenv
 import yaml
+import xarray as xr
 
 
 load_dotenv(override=True)  # loads the .env file into os.environ automatically
@@ -82,6 +83,43 @@ def run_cf_check(filepath: str) -> dict:
     except Exception as e:
         return {"status": "ERROR",   "errors": 0, "warnings": 0, "info": 0, "details": str(e)}
 
+# ── Metadata extraction ───────────────────────────────────────────────────────
+def extract_metadata(path):
+    try:
+        ds = xr.open_dataset(path)
+
+        variables = list(ds.data_vars)
+        print(variables)
+
+        # Time coverage
+        if "time" in ds.coords:
+            time_min = str(ds.time.min().values)
+            time_max = str(ds.time.max().values)
+        else:
+            time_min = time_max = "N/A"
+
+        # Spatial coverage
+        lat_name = next((n for n in ["lat", "latitude", "LAT"] if n in ds.coords), None)
+        lon_name = next((n for n in ["lon", "longitude", "LON"] if n in ds.coords), None)
+
+        lat_min = float(ds[lat_name].min()) if lat_name else "N/A"
+        lat_max = float(ds[lat_name].max()) if lat_name else "N/A"
+        lon_min = float(ds[lon_name].min()) if lon_name else "N/A"
+        lon_max = float(ds[lon_name].max()) if lon_name else "N/A"
+
+        ds.close()
+        return {"variables": variables, "time_min": time_min,
+                "time_max": time_max, "lat_min": lat_min,
+                "lat_max": lat_max, "lon_min": lon_min,
+                "lon_max": lon_max }
+
+    except Exception as e:
+        return {"variables": "", "time_min": "ERROR",
+                "time_max": "ERROR", "lat_min": "ERROR",
+                "lat_max": "ERROR", "lon_min": "ERROR",
+                "lon_max": "ERROR" }
+
+
 
 def main():
     print(f"Listing files in bucket: {BUCKET_NAME}")
@@ -89,7 +127,8 @@ def main():
     print(f"Found {len(objects)} file(s) to check.\n")
 
     fieldnames = ["folder", "object_name", "size_bytes", "last_modified",
-                  "cf_status", "errors", "warnings", "info", "details", "checked_at"]
+                  "cf_status", "errors", "warnings", "info", "details", "checked_at",
+                  "variables", "time_min", "time_max", "lat_min", "lat_max", "lon_min", "lon_max"]
 
     with open(OUTPUT_CSV, "w", newline="") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -109,6 +148,7 @@ def main():
 
                 s3.download_file(BUCKET_NAME, key, tmp_path)
                 cf_result = run_cf_check(tmp_path)
+                metadata_result = extract_metadata(tmp_path)
 
             finally:
                 if tmp_path and os.path.exists(tmp_path):
@@ -125,6 +165,13 @@ def main():
                 "info":          cf_result["info"],
                 "details":       cf_result["details"],
                 "checked_at":    datetime.utcnow().isoformat(),
+                "variables": metadata_result["variables"],
+                "time_min": metadata_result["time_min"],
+                "time_max": metadata_result["time_max"],
+                "lat_min": metadata_result["lat_min"],
+                "lat_max": metadata_result["lat_max"],
+                "lon_min": metadata_result["lon_min"],
+                "lon_max": metadata_result["lon_max"]
             })
 
             print(f"    → {cf_result['status']} | errors={cf_result['errors']} warnings={cf_result['warnings']}\n")
