@@ -7,6 +7,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 import yaml
 import xarray as xr
+import reverse_geocoder as rg
 
 
 load_dotenv(override=True)  # loads the .env file into os.environ automatically
@@ -119,6 +120,17 @@ def extract_metadata(path):
                 "lat_max": "ERROR", "lon_min": "ERROR",
                 "lon_max": "ERROR" }
 
+def get_countrycode(lat_min, lat_max, lon_min, lon_max):
+
+    try: 
+        avg_lat = (lat_min + lat_max)/2
+        avg_lon = (lon_min + lon_max)/2
+        reverse_geo = rg.search((avg_lat, avg_lon))
+
+        return {"Country Code": reverse_geo[0]['cc']}
+    except Exception as e:
+        print(e)
+        return {"Country Code": "ERROR"}
 
 
 def main():
@@ -128,7 +140,8 @@ def main():
 
     fieldnames = ["folder", "object_name", "size_bytes", "last_modified",
                   "cf_status", "errors", "warnings", "info", "details", "checked_at",
-                  "variables", "time_min", "time_max", "lat_min", "lat_max", "lon_min", "lon_max"]
+                  "variables", "time_min", "time_max", "lat_min", "lat_max", "lon_min",
+                  "lon_max","country_code"]
 
     with open(OUTPUT_CSV, "w", newline="") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -149,6 +162,10 @@ def main():
                 s3.download_file(BUCKET_NAME, key, tmp_path)
                 cf_result = run_cf_check(tmp_path)
                 metadata_result = extract_metadata(tmp_path)
+                country_code = get_countrycode(metadata_result["lat_min"], 
+                                               metadata_result["lat_max"],
+                                               metadata_result["lon_min"],
+                                               metadata_result["lat_max"])
 
             finally:
                 if tmp_path and os.path.exists(tmp_path):
@@ -171,7 +188,8 @@ def main():
                 "lat_min": metadata_result["lat_min"],
                 "lat_max": metadata_result["lat_max"],
                 "lon_min": metadata_result["lon_min"],
-                "lon_max": metadata_result["lon_max"]
+                "lon_max": metadata_result["lon_max"],
+                "country_code": country_code
             })
 
             print(f"    → {cf_result['status']} | errors={cf_result['errors']} warnings={cf_result['warnings']}\n")
