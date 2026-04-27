@@ -1,0 +1,3 @@
+bucket_name: "your-bucket"
+output_csv: "your-output-file"
+one_per_folder: true

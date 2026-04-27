@@ -5,17 +5,23 @@ import tempfile
 import boto3
 from datetime import datetime
 from dotenv import load_dotenv
+import yaml
+
+
 load_dotenv(override=True)  # loads the .env file into os.environ automatically
 
 # ── Config ─────────────────────────────────────────────────────────────────
-BUCKET_NAME    = "project-ncp"
-ONE_PER_FOLDER = True
-OUTPUT_CSV     = "cf_check_results.csv"
+with open("config.yaml") as f:
+    config = yaml.safe_load(f)
+
+BUCKET_NAME    = config["bucket_name"]
+ONE_PER_FOLDER = config["one_per_folder"]
+OUTPUT_CSV     = config["output_csv"]
 
 # ── S3 client from environment variables ───────────────────────────────────
 s3 = boto3.client(
     "s3",
-    endpoint_url          = f"https://{os.environ['AWS_S3_ENDPOINT']}",
+    endpoint_url          = f"{os.environ['AWS_S3_ENDPOINT']}",
     aws_access_key_id     = os.environ["AWS_ACCESS_KEY_ID"],
     aws_secret_access_key = os.environ["AWS_SECRET_ACCESS_KEY"],
     aws_session_token     = os.environ["AWS_SESSION_TOKEN"],
