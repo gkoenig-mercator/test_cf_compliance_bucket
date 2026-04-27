@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "cf-compliance-checker"
+version = "0.1.0"
+description = "Check CF compliance of NetCDF files from an S3 bucket"
+authors = ["Guillaume Koenig <gkoenig@mercator-ocean.fr>"]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.10"
+boto3 = "*"
+python-dotenv = "*"
+pyyaml = "*"
+xarray = "*"
+netCDF4 = "*"
+reverse-geocoder = "*"
+cfchecker = "*"
+
+[tool.poetry.group.dev.dependencies]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
